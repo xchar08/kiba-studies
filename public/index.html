@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Flashcards Game</title>
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #BFD7EB;
+        }
+        .flashcard {
+            @apply bg-gray-100 border border-gray-300 p-6 m-2 text-center text-2xl font-semibold cursor-pointer;
+        }
+        .flashcard:hover {
+            @apply bg-gray-200;
+        }
+        #nextButton {
+            @apply bg-blue-400 text-black cursor-pointer transition duration-300 my-6 w-1/4 text-xl py-2;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <input type="file" id="fileInput" accept=".txt" class="mb-4 p-2 border border-gray-300 rounded-lg cursor-pointer">
+    <input type="text" id="apiKeyInput" placeholder="Enter API Key" class="mb-4 p-2 border border-gray-300 rounded-lg">
+    <button onclick="handleFile()" class="mb-4 p-2 bg-blue-500 text-white rounded-lg">Upload and Generate</button>
+    <div id="gif-container" class="flex justify-center items-center mb-6">
+        <img id="random-gif" src="" alt="Random Gif" class="max-w-full max-h-full">
+    </div>    
+    <div id="flashcardContainer" class="flex flex-wrap justify-center"></div>
+    <div id="feedback" class="text-center text-2xl mt-4"></div>
+    <button id="nextButton" class="hidden">Next</button>
+
+    <script src="./index.js"></script>
+</body>
+</html>
