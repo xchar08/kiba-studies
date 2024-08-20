@@ -9,16 +9,41 @@ function shuffleArray(array) {
     return array;
 }
 
-function generateWrongAnswers(correctAnswer) {
-    const wrongAnswers = [];
-    while (wrongAnswers.length < 3) {
-        const randomNumber = Math.floor(Math.random() * 100) + 1;
-        const answer = `Fake ${randomNumber}`; // Simple fake answers
-        if (answer !== correctAnswer && !wrongAnswers.includes(answer)) {
-            wrongAnswers.push(answer);
+async function generateWrongAnswers(apiKey, correctAnswer) {
+    try {
+        const response = await fetch('https://api.openai.com/v1/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: "text-davinci-003",
+                prompt: `Generate 3 contextually similar but incorrect answers for the following answer: "${correctAnswer}". Separate each answer with a comma.`,
+                max_tokens: 60,
+                temperature: 0.7,
+                n: 1
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
         }
+
+        const data = await response.json();
+        const wrongAnswers = data.choices[0].text.trim().split(',').map(answer => answer.trim()).filter(answer => answer);
+
+        // Ensure there are exactly 3 wrong answers
+        while (wrongAnswers.length < 3) {
+            wrongAnswers.push(""); // Add empty strings if there are fewer than 3 answers
+        }
+
+        return wrongAnswers;
+
+    } catch (error) {
+        console.error('Error generating wrong answers:', error);
+        return []; // Return an empty array if there's an error
     }
-    return wrongAnswers;
 }
 
 function displayRandomGif(gifFolder) {
@@ -31,8 +56,9 @@ function displayFlashcard(index) {
     const flashcardContainer = document.getElementById("flashcardContainer");
     const feedback = document.getElementById("feedback");
     const nextButton = document.getElementById("nextButton");
+    const apiKeyInput = document.getElementById('apiKeyInput');
 
-    flashcardContainer.innerHTML = "";
+    flashcardContainer.innerHTML = ""; // Clear previous flashcards
     feedback.innerHTML = "";
     nextButton.classList.add('hidden');
 
@@ -43,32 +69,29 @@ function displayFlashcard(index) {
 
     const currentFlashcard = flashcards[index];
     const correctAnswer = currentFlashcard[0];
-    const wrongAnswers = generateWrongAnswers(correctAnswer);
 
-    const questionDiv = document.createElement("div");
-    questionDiv.textContent = currentFlashcard[1]; // Display the question
-    flashcardContainer.appendChild(questionDiv);
+    generateWrongAnswers(apiKeyInput.value, correctAnswer).then(wrongAnswers => {
+        const questionDiv = document.createElement("div");
+        questionDiv.className = "bg-white shadow-lg rounded-lg p-6 m-4 text-center text-2xl font-semibold";
+        questionDiv.textContent = currentFlashcard[1]; // Display the question
+        flashcardContainer.appendChild(questionDiv);
 
-    const allAnswers = [correctAnswer, ...wrongAnswers];
-    shuffleArray(allAnswers).forEach(answer => {
-        const div = document.createElement("div");
-        div.className = "flashcard";
-        div.textContent = answer;
-        div.onclick = function() {
-            if (answer === correctAnswer) {
-                displayRandomGif('./kibahappy/');
-            } else {
-                displayRandomGif('./kibasad/');
-            }
-            nextButton.classList.remove('hidden');
-        };
-        flashcardContainer.appendChild(div);
+        const allAnswers = [correctAnswer, ...wrongAnswers];
+        shuffleArray(allAnswers).forEach(answer => {
+            const div = document.createElement("div");
+            div.className = "flashcard bg-white shadow-lg rounded-lg border border-gray-200 p-6 m-4 text-center text-2xl font-semibold cursor-pointer transition-transform transform hover:-translate-y-2 hover:bg-blue-50";
+            div.textContent = answer;
+            div.onclick = function() {
+                if (answer === correctAnswer) {
+                    displayRandomGif('./kibahappy/');
+                } else {
+                    displayRandomGif('./kibasad/');
+                }
+                nextButton.classList.remove('hidden');
+            };
+            flashcardContainer.appendChild(div);
+        });
     });
-
-    nextButton.onclick = function() {
-        currentFlashcardIndex++;
-        displayFlashcard(currentFlashcardIndex);
-    };
 }
 
 async function handleFile() {
@@ -82,27 +105,34 @@ async function handleFile() {
         return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('apiKey', apiKey);
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        const fileContent = event.target.result;
+        const lines = fileContent.split('\n');
+        flashcards = [];
 
-    try {
-        const response = await fetch('/generate-answers', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to generate answers');
+        for (let line of lines) {
+            const [question, correctAnswer] = line.split(',');
+            if (question && correctAnswer) {
+                flashcards.push([correctAnswer.trim(), question.trim()]);
+            }
         }
 
-        const generatedFlashcards = await response.json();
-        flashcards = generatedFlashcards.map(([correctAnswer, ...wrongAnswers]) => [correctAnswer, ...wrongAnswers]);
         currentFlashcardIndex = 0;
         displayFlashcard(currentFlashcardIndex);
-    } catch (error) {
-        console.error('Error:', error);
-        alert('An error occurred while generating answers. Check the console for details.');
-    }
+    };
+    reader.readAsText(file);
 }
+
+document.getElementById("nextButton").onclick = function() {
+    currentFlashcardIndex++;
+    if (currentFlashcardIndex < flashcards.length) {
+        displayFlashcard(currentFlashcardIndex);
+    } else {
+        document.getElementById("feedback").textContent = "End of flashcards.";
+        this.classList.add('hidden');
+    }
+};
+
+
 
