@@ -11,15 +11,24 @@ function shuffleArray(array) {
 
 async function generateWrongAnswers(apiKey, correctAnswer) {
     try {
-        const response = await fetch('https://api.openai.com/v1/completions', {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "text-davinci-003",
-                prompt: `Generate 3 contextually similar but incorrect answers for the following answer: "${correctAnswer}". Separate each answer with a comma.`,
+                model: "gpt-3.5-turbo",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are a helpful assistant."
+                    },
+                    {
+                        role: "user",
+                        content: `Generate 3 contextually similar but incorrect answers for the following answer: "${correctAnswer}". Separate each answer with a comma.`
+                    }
+                ],
                 max_tokens: 60,
                 temperature: 0.7,
                 n: 1
@@ -31,7 +40,7 @@ async function generateWrongAnswers(apiKey, correctAnswer) {
         }
 
         const data = await response.json();
-        const wrongAnswers = data.choices[0].text.trim().split(',').map(answer => answer.trim()).filter(answer => answer);
+        const wrongAnswers = data.choices[0].message.content.trim().split(',').map(answer => answer.trim()).filter(answer => answer);
 
         // Ensure there are exactly 3 wrong answers
         while (wrongAnswers.length < 3) {
@@ -133,6 +142,3 @@ document.getElementById("nextButton").onclick = function() {
         this.classList.add('hidden');
     }
 };
-
-
-
