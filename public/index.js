@@ -55,51 +55,51 @@ async function generateWrongAnswers(apiKey, correctAnswer) {
     }
 }
 
-function displayRandomGif(gifFolder) {
-    const randomNum = Math.floor(Math.random() * 5) + 1;
-    const gifUrl = `${gifFolder}${randomNum}.gif`;
-    document.getElementById('random-gif').src = gifUrl;
+async function generateAllFlashcards(apiKey) {
+    const allFlashcards = [];
+
+    for (let i = 0; i < flashcards.length; i++) {
+        const correctAnswer = flashcards[i][0];
+        const wrongAnswers = await generateWrongAnswers(apiKey, correctAnswer);
+        allFlashcards.push({
+            question: flashcards[i][1],
+            correctAnswer: correctAnswer,
+            answers: shuffleArray([correctAnswer, ...wrongAnswers])
+        });
+    }
+
+    return allFlashcards;
 }
 
-function displayFlashcard(index) {
+function displayFlashcard(flashcardData) {
     const flashcardContainer = document.getElementById("flashcardContainer");
     const feedback = document.getElementById("feedback");
     const nextButton = document.getElementById("nextButton");
-    const apiKeyInput = document.getElementById('apiKeyInput');
 
     flashcardContainer.innerHTML = ""; // Clear previous flashcards
     feedback.innerHTML = "";
     nextButton.classList.add('hidden');
 
-    if (index >= flashcards.length) {
-        feedback.textContent = "End of flashcards.";
-        return;
-    }
+    const currentFlashcard = flashcardData[currentFlashcardIndex];
 
-    const currentFlashcard = flashcards[index];
-    const correctAnswer = currentFlashcard[0];
+    const questionDiv = document.createElement("div");
+    questionDiv.className = "bg-white shadow-lg rounded-lg p-6 m-4 text-center text-2xl font-semibold";
+    questionDiv.textContent = currentFlashcard.question; // Display the question
+    flashcardContainer.appendChild(questionDiv);
 
-    generateWrongAnswers(apiKeyInput.value, correctAnswer).then(wrongAnswers => {
-        const questionDiv = document.createElement("div");
-        questionDiv.className = "bg-white shadow-lg rounded-lg p-6 m-4 text-center text-2xl font-semibold";
-        questionDiv.textContent = currentFlashcard[1]; // Display the question
-        flashcardContainer.appendChild(questionDiv);
-
-        const allAnswers = [correctAnswer, ...wrongAnswers];
-        shuffleArray(allAnswers).forEach(answer => {
-            const div = document.createElement("div");
-            div.className = "flashcard bg-white shadow-lg rounded-lg border border-gray-200 p-6 m-4 text-center text-2xl font-semibold cursor-pointer transition-transform transform hover:-translate-y-2 hover:bg-blue-50";
-            div.textContent = answer;
-            div.onclick = function() {
-                if (answer === correctAnswer) {
-                    displayRandomGif('./kibahappy/');
-                } else {
-                    displayRandomGif('./kibasad/');
-                }
-                nextButton.classList.remove('hidden');
-            };
-            flashcardContainer.appendChild(div);
-        });
+    currentFlashcard.answers.forEach(answer => {
+        const div = document.createElement("div");
+        div.className = "flashcard bg-white shadow-lg rounded-lg border border-gray-200 p-6 m-4 text-center text-2xl font-semibold cursor-pointer transition-transform transform hover:-translate-y-2 hover:bg-blue-50";
+        div.textContent = answer;
+        div.onclick = function() {
+            if (answer === currentFlashcard.correctAnswer) {
+                displayRandomGif('./kibahappy/');
+            } else {
+                displayRandomGif('./kibasad/');
+            }
+            nextButton.classList.remove('hidden');
+        };
+        flashcardContainer.appendChild(div);
     });
 }
 
@@ -127,8 +127,8 @@ async function handleFile() {
             }
         }
 
-        currentFlashcardIndex = 0;
-        displayFlashcard(currentFlashcardIndex);
+        const allFlashcards = await generateAllFlashcards(apiKey);
+        displayFlashcard(allFlashcards);
     };
     reader.readAsText(file);
 }
@@ -136,7 +136,7 @@ async function handleFile() {
 document.getElementById("nextButton").onclick = function() {
     currentFlashcardIndex++;
     if (currentFlashcardIndex < flashcards.length) {
-        displayFlashcard(currentFlashcardIndex);
+        displayFlashcard(flashcards);
     } else {
         document.getElementById("feedback").textContent = "End of flashcards.";
         this.classList.add('hidden');
